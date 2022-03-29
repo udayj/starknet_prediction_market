@@ -122,45 +122,6 @@ func join_bet{
     return()
 end
 
-#this will ideally be called by an oracle contract to which we have passed this function's selector
-@external
-func close_bet{
-        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
-        range_check_ptr}(bet_id:felt,current_price_point:felt):
-
-    alloc_locals
-    local syscall_ptr:felt* = syscall_ptr
-    local pedersen_ptr:HashBuiltin* = pedersen_ptr
-    let existing_bet_info: BetInfo=bet_info.read(bet_id=bet_id)
-    local position = existing_bet_info.position_participant1
-    
-
-    let is_le_status:felt = is_le(current_price_point,existing_bet_info.predicted_price_point)
-   
-
-        if is_le_status == 1:
-        if position == 0:
-            set_winner(bet_id, existing_bet_info.participant1)
-            return()
-        end
-        set_winner(bet_id, existing_bet_info.participant2)
-        return()
-    end
-
-
-    if is_le_status == 0:
-
-        if position == 1:
-            set_winner(bet_id, existing_bet_info.participant1)
-            return()
-        end
-        set_winner(bet_id, existing_bet_info.participant2)
-    end
-
-    return()
-end
-
-
 func set_winner{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
         range_check_ptr}(bet_id:felt, winner:felt):
@@ -173,13 +134,70 @@ func set_winner{
      let updated_bet_info: BetInfo = BetInfo(participant1=existing_bet_info.participant1,
                                     participant2=existing_bet_info.participant2,
                                     position_participant1=existing_bet_info.position_participant1,
-                                    staked_amount=existing_bet_info.staked_amount,
                                     predicted_price_point=existing_bet_info.predicted_price_point,
+                                    staked_amount=existing_bet_info.staked_amount,
                                     status=2,
                                     winner=winner)
     bet_info.write(bet_id,updated_bet_info)
-
+    
     increase_balance(winner, 2*existing_bet_info.staked_amount)
     decrease_balance(0,2*existing_bet_info.staked_amount)
+    
     return()
+end
+
+#this will ideally be called by an oracle contract to which we have passed this function's selector
+@external
+func close_bet{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}(bet_id:felt,current_price_point:felt):
+
+    alloc_locals
+   
+    let existing_bet_info: BetInfo=bet_info.read(bet_id=bet_id)
+    local position = existing_bet_info.position_participant1
+    #local syscall_ptr:felt* = syscall_ptr
+    #local pedersen_ptr:HashBuiltin* = pedersen_ptr
+    #local range_check_ptr = range_check_ptr
+    let is_le_status:felt = is_le(current_price_point,existing_bet_info.predicted_price_point)
+    tempvar syscall_ptr:felt*=syscall_ptr
+
+    if is_le_status == 1:
+        if position == 0:
+            set_winner(bet_id, existing_bet_info.participant1)
+            tempvar syscall_ptr:felt* = syscall_ptr
+            
+        else:
+            set_winner(bet_id, existing_bet_info.participant2)
+            tempvar syscall_ptr:felt* = syscall_ptr
+        end
+    
+    else:
+
+        if position == 1:
+            set_winner(bet_id, existing_bet_info.participant1)
+            tempvar syscall_ptr:felt* = syscall_ptr
+        else:
+            set_winner(bet_id, existing_bet_info.participant2)
+            tempvar syscall_ptr:felt* = syscall_ptr
+        end
+    end
+
+
+
+    return()
+end
+
+@view
+func get_bet_info{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}(bet_id:felt) -> (res:BetInfo):
+    return bet_info.read(bet_id)
+end
+
+@view
+func get_balance{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}(user:felt) -> (res:felt):
+    return balance.read(user)
 end
