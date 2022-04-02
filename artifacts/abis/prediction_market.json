@@ -2,6 +2,23 @@
     {
         "members": [
             {
+                "name": "low",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "high",
+                "offset": 1,
+                "type": "felt"
+            }
+        ],
+        "name": "Uint256",
+        "size": 2,
+        "type": "struct"
+    },
+    {
+        "members": [
+            {
                 "name": "participant1",
                 "offset": 0,
                 "type": "felt"
@@ -12,33 +29,38 @@
                 "type": "felt"
             },
             {
-                "name": "position_participant1",
+                "name": "currency_address",
                 "offset": 2,
                 "type": "felt"
             },
             {
-                "name": "predicted_price_point",
+                "name": "position_participant1",
                 "offset": 3,
                 "type": "felt"
             },
             {
-                "name": "staked_amount",
+                "name": "predicted_price_point",
                 "offset": 4,
-                "type": "felt"
+                "type": "Uint256"
+            },
+            {
+                "name": "staked_amount",
+                "offset": 6,
+                "type": "Uint256"
             },
             {
                 "name": "status",
-                "offset": 5,
+                "offset": 8,
                 "type": "felt"
             },
             {
                 "name": "winner",
-                "offset": 6,
+                "offset": 9,
                 "type": "felt"
             }
         ],
         "name": "BetInfo",
-        "size": 7,
+        "size": 10,
         "type": "struct"
     },
     {
@@ -79,10 +101,14 @@
             },
             {
                 "name": "price_point",
-                "type": "felt"
+                "type": "Uint256"
             },
             {
                 "name": "amount",
+                "type": "Uint256"
+            },
+            {
+                "name": "currency_address",
                 "type": "felt"
             }
         ],
@@ -114,7 +140,7 @@
             },
             {
                 "name": "current_price_point",
-                "type": "felt"
+                "type": "Uint256"
             }
         ],
         "name": "close_bet",

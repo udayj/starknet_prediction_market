@@ -1,22 +1,5 @@
 [
     {
-        "members": [
-            {
-                "name": "x",
-                "offset": 0,
-                "type": "felt"
-            },
-            {
-                "name": "y",
-                "offset": 1,
-                "type": "felt"
-            }
-        ],
-        "name": "Point",
-        "size": 2,
-        "type": "struct"
-    },
-    {
         "inputs": [
             {
                 "name": "amount",
@@ -34,55 +17,6 @@
             {
                 "name": "res",
                 "type": "felt"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "name": "points",
-                "type": "(Point, Point)"
-            }
-        ],
-        "name": "sum_points",
-        "outputs": [
-            {
-                "name": "res",
-                "type": "Point"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "name": "x",
-                "type": "felt"
-            },
-            {
-                "name": "y",
-                "type": "felt"
-            }
-        ],
-        "name": "create_struct",
-        "outputs": [],
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "name": "id",
-                "type": "felt"
-            }
-        ],
-        "name": "get_point_storage",
-        "outputs": [
-            {
-                "name": "res",
-                "type": "Point"
             }
         ],
         "stateMutability": "view",

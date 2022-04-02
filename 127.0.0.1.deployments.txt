@@ -1,0 +1,4 @@
+0x009c06d167033974233a91a258f3f935080410e016d3354001689f8d03fb5adb:/root/eth/cairo_venv/lib/python3.8/site-packages/nile/artifacts/abis/Account.json:account-0
+0x0660d22367129e2f50ba7d9220409995c8d37131268583884fde519fa1906ddf:artifacts/abis/ERC20.json:token
+0x028ea09531f26b7266fb3e6378c82bbf6d49b02c7dfbf4a6494f39a09c817e62:artifacts/abis/prediction_market.json:market
+0x02ecc40bb8bda3f53b25d6b61458b35076fa9364f8962b89b2808c2ff33f0a67:/root/eth/cairo_venv/lib/python3.8/site-packages/nile/artifacts/abis/Account.json:account-1
