@@ -1,4 +1,5 @@
-0x009c06d167033974233a91a258f3f935080410e016d3354001689f8d03fb5adb:/root/eth/cairo_venv/lib/python3.8/site-packages/nile/artifacts/abis/Account.json:account-0
-0x0660d22367129e2f50ba7d9220409995c8d37131268583884fde519fa1906ddf:artifacts/abis/ERC20.json:token
-0x028ea09531f26b7266fb3e6378c82bbf6d49b02c7dfbf4a6494f39a09c817e62:artifacts/abis/prediction_market.json:market
-0x02ecc40bb8bda3f53b25d6b61458b35076fa9364f8962b89b2808c2ff33f0a67:/root/eth/cairo_venv/lib/python3.8/site-packages/nile/artifacts/abis/Account.json:account-1
+0x01c93d4e62e54053241207be82d9deb97f91c56f6d1f80df697f5ff3ee85bcd6:/root/eth/cairo_venv/lib/python3.8/site-packages/nile/artifacts/abis/Account.json:account-0
+0x078596d6c890c01b34af5cb571fbf084d55d68469fddd0be380de8edd47a7f69:artifacts/abis/ERC20.json:token
+0x0403a5c55eced1d180857b7a54e991356e88a7f843588b85ed20df98244aff07:artifacts/abis/oracle.json:oracle
+0x0026df1c201bb3ccfc5d2b87a73239ca21e6f6ae8114b8992183be82e7f32cad:artifacts/abis/prediction_market.json:market
+0x04b9c0d987780db98d313cc7f28ef41836140c9e21a09c810a1e2886eded8291:/root/eth/cairo_venv/lib/python3.8/site-packages/nile/artifacts/abis/Account.json:account-1

@@ -2,6 +2,28 @@
     {
         "members": [
             {
+                "name": "contract_address",
+                "offset": 0,
+                "type": "felt"
+            },
+            {
+                "name": "function_selector",
+                "offset": 1,
+                "type": "felt"
+            },
+            {
+                "name": "function_called",
+                "offset": 2,
+                "type": "felt"
+            }
+        ],
+        "name": "ContractData",
+        "size": 3,
+        "type": "struct"
+    },
+    {
+        "members": [
+            {
                 "name": "low",
                 "offset": 0,
                 "type": "felt"
@@ -66,32 +88,94 @@
     {
         "inputs": [
             {
-                "name": "participant",
-                "type": "felt"
-            },
-            {
-                "name": "amount",
+                "name": "index",
                 "type": "felt"
             }
         ],
-        "name": "increase_balance",
+        "name": "get_task",
+        "outputs": [
+            {
+                "name": "contract",
+                "type": "ContractData"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "index",
+                "type": "felt"
+            },
+            {
+                "name": "contract",
+                "type": "ContractData"
+            }
+        ],
+        "name": "set_task",
+        "outputs": [
+            {
+                "name": "status",
+                "type": "felt"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "index",
+                "type": "felt"
+            },
+            {
+                "name": "calldata_len",
+                "type": "felt"
+            },
+            {
+                "name": "calldata",
+                "type": "felt*"
+            }
+        ],
+        "name": "call_indexed_contract",
         "outputs": [],
         "type": "function"
     },
     {
         "inputs": [
             {
-                "name": "participant",
-                "type": "felt"
-            },
-            {
-                "name": "amount",
+                "name": "address",
                 "type": "felt"
             }
         ],
-        "name": "decrease_balance",
+        "name": "constructor",
+        "outputs": [],
+        "type": "constructor"
+    },
+    {
+        "inputs": [
+            {
+                "name": "existing_bet_id",
+                "type": "felt"
+            }
+        ],
+        "name": "check_valid_bet_id",
         "outputs": [],
         "type": "function"
+    },
+    {
+        "data": [
+            {
+                "name": "initiator",
+                "type": "felt"
+            },
+            {
+                "name": "bet_id",
+                "type": "felt"
+            }
+        ],
+        "keys": [],
+        "name": "start_bet_called",
+        "type": "event"
     },
     {
         "inputs": [
@@ -143,7 +227,7 @@
                 "type": "Uint256"
             }
         ],
-        "name": "close_bet",
+        "name": "complete_bet",
         "outputs": [],
         "type": "function"
     },
@@ -165,16 +249,11 @@
         "type": "function"
     },
     {
-        "inputs": [
-            {
-                "name": "user",
-                "type": "felt"
-            }
-        ],
-        "name": "get_balance",
+        "inputs": [],
+        "name": "get_oracle_address",
         "outputs": [
             {
-                "name": "res",
+                "name": "address",
                 "type": "felt"
             }
         ],

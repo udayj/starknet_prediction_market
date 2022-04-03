@@ -1,13 +1,16 @@
 %lang starknet
-%builtins pedersen range_check
+
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
 from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
-from starkware.cairo.common.math import assert_nn
+from starkware.cairo.common.math import assert_nn, assert_le, assert_lt, assert_not_equal
 from starkware.cairo.common.math_cmp import is_le
-from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_add
+from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_add, uint256_lt
+
 
 from contracts.interfaces.IERC20 import IERC20
+from contracts.interfaces.IOracle import IOracle
+from contracts.oracles.oracle import ContractData
 
 from openzeppelin.utils.constants import TRUE
 
@@ -27,6 +30,7 @@ struct BetInfo:
     member winner: felt
 end
 
+
 # separate explicit position for participant 2 not being stored as it is assumed that it will be opposite to that of participant1
 
 
@@ -38,56 +42,82 @@ end
 func bet_id() -> (res:felt):
 end
 
-
 @storage_var
-func balance(user:felt) -> (res:felt):
+func oracle_address() -> (address:felt):
 end
 
-@external
-func increase_balance{
-        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
-        range_check_ptr}(participant:felt, amount:felt):
+@constructor
+func constructor{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(address:felt):
 
-    let (current_balance) = balance.read(user=participant)
-    balance.write(participant, current_balance + amount)
+    oracle_address.write(address)
+    return()
+end
+
+
+func check_valid_account(participant:felt):
+
+     with_attr error_message("This function is only callable from an account"):
+        assert_not_equal(participant,0)
+    end
     return()
 end
 
 @external
-func decrease_balance{
+func check_valid_bet_id{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
-        range_check_ptr}(participant:felt, amount:felt):
+        range_check_ptr}(existing_bet_id:felt):
+    let (current_bet_id)= bet_id.read()
 
-    let (current_balance) = balance.read(user=participant)
-    balance.write(participant, current_balance - amount)
+    with_attr error_message("Incorrect Bet ID"):
+        assert_lt(existing_bet_id,current_bet_id)
+        assert_nn(existing_bet_id)
+    end
     return()
+
 end
 
+@event
+func start_bet_called(initiator:felt, bet_id:felt):
+end
 # the participant initiating the bet gets to decide the position (0 lower / 1 higher), price point, and staked amount
 @external
 func start_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
         range_check_ptr}(position:felt, price_point:Uint256, amount:Uint256, currency_address:felt) -> (bet_id:felt):
 
-    #with_attr error_message("Price point cannot be negative"):
-    #    assert_nn(price_point)
-    #end
+
+    let UINT256_ONE:Uint256=Uint256(low=1,high=0)
+
+    with_attr error_message("Staked amount cannot be less than 1"):
+        let (staked_amount_status:felt ) = uint256_lt(amount, UINT256_ONE)
+        assert staked_amount_status = 0
+    end
+
+    with_attr error_message("Position can only be 0 or 1"):
+        assert_nn(position)
+        assert_le(position,1)
+    end
+
 
     let (participant1)=get_caller_address()
+
+    check_valid_account(participant1)
+
+
     let (recipient_address:felt) = get_contract_address()
     let (status) = IERC20.transferFrom(contract_address=currency_address,
                                        sender=participant1, 
                                        recipient=recipient_address, 
                                        amount=amount)
     
-    assert status = TRUE
-   # let (current_participant_balance)=balance.read(user=participant1)
-
-    # this is the part where we spoof the ERC20 mechanics
-   # decrease_balance(participant1, amount)
-   # increase_balance(0,amount)
-    #balance.write(user=participant, current_participant_balance-amount)
-    #balance.write(user=0, amount)  #user=0 signifies the protocol address
+    with_attr error_message("Problem staking tokens with contract"):
+        assert status = TRUE
+    end
+   
     let new_bet_info:BetInfo=BetInfo(participant1=participant1,
                          participant2=0,
                          currency_address=currency_address,
@@ -101,6 +131,8 @@ func start_bet{
     bet_id.write(current_bet_id+1)
 
     bet_info.write(current_bet_id,new_bet_info)
+    start_bet_called.emit(initiator=participant1,bet_id=current_bet_id)
+
     return (current_bet_id)
 end
 
@@ -112,23 +144,28 @@ func join_bet{
 
     let (participant2)=get_caller_address()
 
-    #let (current_participant_balance)=balance.read(user=participant2)
+    check_valid_bet_id(existing_bet_id)
 
-    
-
-    #balance.write(user=participant, current_participant_balance-amount)
-    #balance.write(user=0, amount)
+    check_valid_account(participant2)
 
     let existing_bet_info:BetInfo = bet_info.read(bet_id=existing_bet_id)
+
+    with_attr error_message("This bet is not open for joining"):
+        assert existing_bet_info.status = 0
+    end
 
     let (recipient_address:felt) = get_contract_address()
     let (status:felt) = IERC20.transferFrom(contract_address=existing_bet_info.currency_address,
                                             sender = participant2,
                                             recipient = recipient_address,
                                             amount=existing_bet_info.staked_amount)
-    assert status = TRUE
-    #decrease_balance(participant2, existing_bet_info.staked_amount)
-    #increase_balance(0,existing_bet_info.staked_amount)
+    
+
+    with_attr error_message("Problem staking tokens with contract"):
+        assert status = TRUE
+    end
+
+    
 
     let updated_bet_info: BetInfo = BetInfo(participant1=existing_bet_info.participant1,
                                     participant2=participant2,
@@ -139,6 +176,22 @@ func join_bet{
                                     status=1,
                                     winner=0)
     bet_info.write(existing_bet_id,updated_bet_info)
+
+    #function selector found using get_selector_from_name in starkware.starknet.public.abi (.py)
+    #get_selector_from_name('complete_bet')
+    let function_selector:felt = 843701533249128903986784726593517935028271838306755478971744945730444094598
+
+    let contract:ContractData = ContractData(contract_address=recipient_address,
+                                  function_selector=function_selector,
+                                  function_called=0)
+
+    let (current_oracle_address) = oracle_address.read()
+    let (status)=IOracle.set_task(contract_address=current_oracle_address,index=existing_bet_id,contract=contract)
+
+    with_attr error_message("Problem setting task in oracle"):
+        assert status = 1
+    end
+
     return()
 end
 
@@ -162,11 +215,16 @@ func set_winner{
     bet_info.write(bet_id,updated_bet_info)
     
     let (winning_amount:Uint256, carry:felt ) = uint256_add(existing_bet_info.staked_amount,existing_bet_info.staked_amount)
+    # we are just going to assume we are delaing with small enough numbers that carry does not matter
+
     let (status:felt) = IERC20.transfer(contract_address=existing_bet_info.currency_address,
                                         recipient=winner, 
                                         amount=winning_amount)
 
-    assert status = TRUE
+
+    with_attr error_message("Problem transfering winning amount"):
+        assert status = TRUE
+    end
     #increase_balance(winner, 2*existing_bet_info.staked_amount)
     #decrease_balance(0,2*existing_bet_info.staked_amount)
     
@@ -175,17 +233,28 @@ end
 
 #this will ideally be called by an oracle contract to which we have passed this function's selector
 @external
-func close_bet{
+func complete_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
         range_check_ptr}(bet_id:felt,current_price_point:Uint256):
 
     alloc_locals
    
+    check_valid_bet_id(bet_id)
+    let(caller) = get_caller_address()
+    let(current_oracle_address)=oracle_address.read()
+    with_attr error_message("Unauthorized caller"):
+
+        assert caller = current_oracle_address
+    end
+
     let existing_bet_info: BetInfo=bet_info.read(bet_id=bet_id)
+    
+    with_attr error_message("Only closed and undecided bets can be completed"):
+        assert existing_bet_info.status = 1
+    end
+
     local position = existing_bet_info.position_participant1
-    #local syscall_ptr:felt* = syscall_ptr
-    #local pedersen_ptr:HashBuiltin* = pedersen_ptr
-    #local range_check_ptr = range_check_ptr
+    
     let is_le_status:felt = uint256_le(current_price_point,existing_bet_info.predicted_price_point)
     tempvar syscall_ptr:felt*=syscall_ptr
 
@@ -222,9 +291,12 @@ func get_bet_info{
     return bet_info.read(bet_id)
 end
 
+
 @view
-func get_balance{
+func get_oracle_address{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
-        range_check_ptr}(user:felt) -> (res:felt):
-    return balance.read(user)
+        range_check_ptr}() -> (address:felt):
+
+    let (current_oracle_address) = oracle_address.read()
+    return(current_oracle_address)
 end
