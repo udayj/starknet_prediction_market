@@ -7,7 +7,7 @@ from starkware.cairo.common.cairo_builtins import HashBuiltin
 struct ContractData:
     member contract_address:felt
     member function_selector:felt
-    member function_called:felt
+    member function_called:felt #this tracks whether the relevant function has already been called
 end
 
 #the indexing is leaky here meaning there is a tight coupling between indexes here and bet ids in the prediction market
@@ -39,6 +39,7 @@ func call_indexed_contract{
 
         let(contract)=contract_indexer.read(index)
 
+        #only call relevant function in contract once
         with_attr error_message("Call to contract already completed"):
             assert contract.function_called = 0
         end

@@ -14,17 +14,18 @@ from contracts.oracles.oracle import ContractData
 
 from openzeppelin.utils.constants import TRUE
 
-# 
-# the oracle is non-existant...TODO - oracle contract that can be asked for data and given a callback function to execute
-# TODO assertions to check for various conditions and assumptions
+
+# we are spoofing the oracle contract that can is just given the function selector to execute
 # TODO NFT for the position in the bet
+
+#this struct holds all the relevant data pertaining to a bet/private market
 struct BetInfo:
 
     member participant1:felt
     member participant2:felt
     member currency_address: felt
     member position_participant1:felt # 0 means bet that price will be lower than predicted price point and 1 means higher
-    member predicted_price_point:Uint256
+    member predicted_price_point:Uint256 # this can be price of anything (like ETH) which can be provided by a trustable oracle
     member staked_amount:Uint256
     member status: felt
     member winner: felt
@@ -53,7 +54,7 @@ func constructor{
         range_check_ptr
     }(address:felt):
 
-    oracle_address.write(address)
+    oracle_address.write(address) #store oracle address that will call complete_bet function to decide winner
     return()
 end
 
@@ -80,10 +81,14 @@ func check_valid_bet_id{
 
 end
 
+# any front-end for this contract should listen for this event (to get the bet id - which will be used by 2nd participant
+# for joining the bet
+
 @event
 func start_bet_called(initiator:felt, bet_id:felt):
 end
 # the participant initiating the bet gets to decide the position (0 lower / 1 higher), price point, and staked amount
+# and staking token address
 @external
 func start_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -105,6 +110,7 @@ func start_bet{
 
     let (participant1)=get_caller_address()
 
+    #this function needs to be called through an account contract
     check_valid_account(participant1)
 
 
@@ -131,12 +137,15 @@ func start_bet{
     bet_id.write(current_bet_id+1)
 
     bet_info.write(current_bet_id,new_bet_info)
+
+    #emitting the event for front end to get to know the bet id
     start_bet_called.emit(initiator=participant1,bet_id=current_bet_id)
 
     return (current_bet_id)
 end
 
 
+# this function will be called by the 2nd participant to join an existing bet which is still open (status==0)
 @external
 func join_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -146,6 +155,7 @@ func join_bet{
 
     check_valid_bet_id(existing_bet_id)
 
+    #this function can should be called from an account contract
     check_valid_account(participant2)
 
     let existing_bet_info:BetInfo = bet_info.read(bet_id=existing_bet_id)
@@ -181,6 +191,8 @@ func join_bet{
     #get_selector_from_name('complete_bet')
     let function_selector:felt = 843701533249128903986784726593517935028271838306755478971744945730444094598
 
+    # this data is given to the oracle contract which will call the complete_bet function with the present price
+    # to decide the winner
     let contract:ContractData = ContractData(contract_address=recipient_address,
                                   function_selector=function_selector,
                                   function_called=0)
@@ -225,13 +237,11 @@ func set_winner{
     with_attr error_message("Problem transfering winning amount"):
         assert status = TRUE
     end
-    #increase_balance(winner, 2*existing_bet_info.staked_amount)
-    #decrease_balance(0,2*existing_bet_info.staked_amount)
-    
+     
     return()
 end
 
-#this will ideally be called by an oracle contract to which we have passed this function's selector
+#this can only be called by an oracle contract to which we have passed this function's selector
 @external
 func complete_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -249,6 +259,7 @@ func complete_bet{
 
     let existing_bet_info: BetInfo=bet_info.read(bet_id=bet_id)
     
+    #only bets with status==1 can be completed and winner decided
     with_attr error_message("Only closed and undecided bets can be completed"):
         assert existing_bet_info.status = 1
     end
