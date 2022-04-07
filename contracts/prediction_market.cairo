@@ -7,31 +7,17 @@ from starkware.cairo.common.math import assert_nn, assert_le, assert_lt, assert_
 from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_add, uint256_lt
 
-
+from starkware.cairo.common.alloc import alloc
 from contracts.interfaces.IERC20 import IERC20
 from contracts.interfaces.IOracle import IOracle
 from contracts.oracles.oracle import ContractData
+from contracts.data_types import BetInfo
 
 from openzeppelin.utils.constants import TRUE
 
 
 # we are spoofing the oracle contract that can is just given the function selector to execute
 # TODO NFT for the position in the bet
-
-#this struct holds all the relevant data pertaining to a bet/private market
-struct BetInfo:
-
-    member participant1:felt
-    member participant2:felt
-    member currency_address: felt
-    member position_participant1:felt # 0 means bet that price will be lower than predicted price point and 1 means higher
-    member predicted_price_point:Uint256 # this can be price of anything (like ETH) which can be provided by a trustable oracle
-    member staked_amount:Uint256
-    member status: felt
-    member winner: felt
-end
-
-
 # separate explicit position for participant 2 not being stored as it is assumed that it will be opposite to that of participant1
 
 
@@ -45,6 +31,11 @@ end
 
 @storage_var
 func oracle_address() -> (address:felt):
+end
+
+# address -> number of bets initiated mapping
+@storage_var
+func num_bets_initiated(address:felt) -> (num:felt):
 end
 
 @constructor
@@ -137,7 +128,8 @@ func start_bet{
     bet_id.write(current_bet_id+1)
 
     bet_info.write(current_bet_id,new_bet_info)
-
+    let (num_bets)= num_bets_initiated.read(participant1)
+    num_bets_initiated.write(participant1,num_bets+1)
     #emitting the event for front end to get to know the bet id
     start_bet_called.emit(initiator=participant1,bet_id=current_bet_id)
 
@@ -295,6 +287,74 @@ func complete_bet{
     return()
 end
 
+# this function recursively gets the bet_ids associated with address as the participant1
+
+func get_bet_ids{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(address:felt, num_bets:felt, bet_ids:felt*, bets_found:felt, index:felt):
+
+    if num_bets==bets_found:
+        return()
+    end
+
+    let bet:BetInfo = get_bet_info(index)
+
+    if bet.participant1 == address:
+        assert [bet_ids]=index
+        get_bet_ids(address,num_bets,bet_ids+1,bets_found+1,index+1)
+        return()
+    else:
+        get_bet_ids(address,num_bets,bet_ids,bets_found,index+1)
+        return()
+    end
+    
+end
+
+# this function takes an address and returns the list of bet ids that were created by this address as the initiator
+# here initiator means participant1 in terms of BetInfo members
+
+@external
+func initiator_to_bet_ids{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(address:felt) -> (bet_ids_len:felt, bet_ids:felt*):
+
+    alloc_locals
+    let (local num_bets) = num_bets_initiated.read(address)
+
+    let (bet_ids) = alloc()
+
+    # recursively fill the bet_ids array with the relevant bet ids
+    get_bet_ids(address=address,
+                num_bets=num_bets,
+                bet_ids=bet_ids,
+                bets_found=0,
+                index=0)
+
+    return(num_bets,bet_ids)
+end
+
+
+@external
+func set_oracle_address{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(address:felt):
+
+    with_attr error_message("cannot be 0 address"):
+        assert_not_equal(address,0)
+    end
+
+    oracle_address.write(address)
+    return()
+end
+
+
+
 @view
 func get_bet_info{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -321,3 +381,5 @@ func get_current_bet_id{
     let (current_bet_id) = bet_id.read()
     return (current_bet_id)
 end
+
+

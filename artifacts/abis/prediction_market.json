@@ -234,6 +234,37 @@
     {
         "inputs": [
             {
+                "name": "address",
+                "type": "felt"
+            }
+        ],
+        "name": "initiator_to_bet_ids",
+        "outputs": [
+            {
+                "name": "bet_ids_len",
+                "type": "felt"
+            },
+            {
+                "name": "bet_ids",
+                "type": "felt*"
+            }
+        ],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "address",
+                "type": "felt"
+            }
+        ],
+        "name": "set_oracle_address",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "name": "bet_id",
                 "type": "felt"
             }
