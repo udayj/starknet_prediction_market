@@ -259,5 +259,17 @@
         ],
         "stateMutability": "view",
         "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_current_bet_id",
+        "outputs": [
+            {
+                "name": "current_bet_id",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
     }
 ]

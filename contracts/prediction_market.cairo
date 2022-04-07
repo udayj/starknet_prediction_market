@@ -311,3 +311,13 @@ func get_oracle_address{
     let (current_oracle_address) = oracle_address.read()
     return(current_oracle_address)
 end
+
+@view
+func get_current_bet_id{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (current_bet_id:felt):
+    let (current_bet_id) = bet_id.read()
+    return (current_bet_id)
+end
