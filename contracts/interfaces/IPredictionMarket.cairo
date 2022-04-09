@@ -1,7 +1,7 @@
 %lang starknet
 
 from contracts.oracles.oracle import ContractData
-from contracts.prediction_market import BetInfo
+from contracts.data_types import BetInfo
 from starkware.cairo.common.uint256 import Uint256
 
 @contract_interface
