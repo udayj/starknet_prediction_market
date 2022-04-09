@@ -2,7 +2,7 @@
 
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address
+from starkware.starknet.common.syscalls import get_caller_address, get_contract_address, get_block_timestamp
 from starkware.cairo.common.math import assert_nn, assert_le, assert_lt, assert_not_equal
 from starkware.cairo.common.math_cmp import is_le
 from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_add, uint256_lt
@@ -12,6 +12,7 @@ from contracts.interfaces.IERC20 import IERC20
 from contracts.interfaces.IOracle import IOracle
 from contracts.oracles.oracle import ContractData
 from contracts.data_types import BetInfo
+from contracts.interfaces.ITaskManager import ITaskManager
 
 from openzeppelin.utils.constants import TRUE
 
@@ -36,6 +37,21 @@ end
 # address -> number of bets initiated mapping
 @storage_var
 func num_bets_initiated(address:felt) -> (num:felt):
+end
+
+@storage_var
+func task_manager_address() -> (address: felt):
+end
+
+@external
+func set_task_manager_address{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(address:felt):
+
+    task_manager_address.write(address)
+    return()
 end
 
 @constructor
@@ -83,9 +99,14 @@ end
 @external
 func start_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
-        range_check_ptr}(position:felt, price_point:Uint256, amount:Uint256, currency_address:felt) -> (bet_id:felt):
+        range_check_ptr}(position:felt, 
+                         price_point:Uint256, 
+                         amount:Uint256, 
+                         currency_address:felt,
+                         asset_type: felt,
+                         time_duration: felt) -> (bet_id:felt):
 
-
+    alloc_locals
     let UINT256_ONE:Uint256=Uint256(low=1,high=0)
 
     with_attr error_message("Staked amount cannot be less than 1"):
@@ -98,7 +119,12 @@ func start_bet{
         assert_le(position,1)
     end
 
+    with_attr error_message("Time duration cannot be negative"):
+        assert_nn(time_duration)
+    end
 
+    let (local current_timestamp) = get_block_timestamp()
+    local decision_time = time_duration + current_timestamp
     let (participant1)=get_caller_address()
 
     #this function needs to be called through an account contract
@@ -122,7 +148,9 @@ func start_bet{
                          predicted_price_point=price_point,
                          staked_amount=amount,
                          status=0, #0 means open, 1 means closed but undecided, 2 means decided and completed
-                         winner=0)
+                         winner=0,
+                         asset_type=asset_type,
+                         decision_time=decision_time)
 
     let (current_bet_id) = bet_id.read()
     bet_id.write(current_bet_id+1)
@@ -176,23 +204,21 @@ func join_bet{
                                     predicted_price_point=existing_bet_info.predicted_price_point,
                                     staked_amount=existing_bet_info.staked_amount,
                                     status=1,
-                                    winner=0)
+                                    winner=0,
+                                    asset_type=existing_bet_info.asset_type,
+                                    decision_time=existing_bet_info.decision_time)
     bet_info.write(existing_bet_id,updated_bet_info)
 
-    #function selector found using get_selector_from_name in starkware.starknet.public.abi (.py)
-    #get_selector_from_name('complete_bet')
-    let function_selector:felt = 843701533249128903986784726593517935028271838306755478971744945730444094598
+   
 
-    # this data is given to the oracle contract which will call the complete_bet function with the present price
-    # to decide the winner
-    let contract:ContractData = ContractData(contract_address=recipient_address,
-                                  function_selector=function_selector,
-                                  function_called=0)
+    let (task_manager) = task_manager_address.read()
 
-    let (current_oracle_address) = oracle_address.read()
-    let (status)=IOracle.set_task(contract_address=current_oracle_address,index=existing_bet_id,contract=contract)
+    let (status) = ITaskManager.add_task(contract_address = task_manager,
+                                         bet_id = existing_bet_id,
+                                         decision_time = existing_bet_info.decision_time,
+                                         asset_type = existing_bet_info.asset_type)
 
-    with_attr error_message("Problem setting task in oracle"):
+    with_attr error_message("Problem setting task in task manager"):
         assert status = 1
     end
 
@@ -215,7 +241,9 @@ func set_winner{
                                     predicted_price_point=existing_bet_info.predicted_price_point,
                                     staked_amount=existing_bet_info.staked_amount,
                                     status=2,
-                                    winner=winner)
+                                    winner=winner,
+                                    asset_type=existing_bet_info.asset_type,
+                                    decision_time=existing_bet_info.decision_time)
     bet_info.write(bet_id,updated_bet_info)
     
     let (winning_amount:Uint256, carry:felt ) = uint256_add(existing_bet_info.staked_amount,existing_bet_info.staked_amount)

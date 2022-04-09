@@ -14,4 +14,6 @@ struct BetInfo:
     member staked_amount:Uint256
     member status: felt
     member winner: felt
+    member asset_type: felt # presently supports 0 (ETH) only
+    member decision_time: felt # decision time will be time_duration (supplied by initiator) + current block timestamp
 end

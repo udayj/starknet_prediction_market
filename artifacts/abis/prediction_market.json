@@ -79,10 +79,20 @@
                 "name": "winner",
                 "offset": 9,
                 "type": "felt"
+            },
+            {
+                "name": "asset_type",
+                "offset": 10,
+                "type": "felt"
+            },
+            {
+                "name": "decision_time",
+                "offset": 11,
+                "type": "felt"
             }
         ],
         "name": "BetInfo",
-        "size": 10,
+        "size": 12,
         "type": "struct"
     },
     {
@@ -147,6 +157,17 @@
                 "type": "felt"
             }
         ],
+        "name": "set_task_manager_address",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "name": "address",
+                "type": "felt"
+            }
+        ],
         "name": "constructor",
         "outputs": [],
         "type": "constructor"
@@ -193,6 +214,14 @@
             },
             {
                 "name": "currency_address",
+                "type": "felt"
+            },
+            {
+                "name": "asset_type",
+                "type": "felt"
+            },
+            {
+                "name": "time_duration",
                 "type": "felt"
             }
         ],
