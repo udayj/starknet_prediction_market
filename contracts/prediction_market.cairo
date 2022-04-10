@@ -2,11 +2,25 @@
 
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
-from starkware.starknet.common.syscalls import get_caller_address, get_contract_address, get_block_timestamp
-from starkware.cairo.common.math import assert_nn, assert_le, assert_lt, assert_not_equal
+from starkware.starknet.common.syscalls import (
+    get_caller_address, 
+    get_contract_address, 
+    get_block_timestamp
+)
+from starkware.cairo.common.math import (
+    assert_nn, 
+    assert_le, 
+    assert_lt, 
+    assert_not_equal
+)
 from starkware.cairo.common.math_cmp import is_le
-from starkware.cairo.common.uint256 import Uint256, uint256_le, uint256_add, uint256_lt
-
+from starkware.cairo.common.uint256 import (
+    Uint256, 
+    uint256_le, 
+    uint256_add, 
+    uint256_lt
+)
+from openzeppelin.utils.constants import TRUE
 from starkware.cairo.common.alloc import alloc
 from contracts.interfaces.IERC20 import IERC20
 from contracts.interfaces.IOracle import IOracle
@@ -14,7 +28,7 @@ from contracts.oracles.oracle import ContractData
 from contracts.data_types import BetInfo
 from contracts.interfaces.ITaskManager import ITaskManager
 
-from openzeppelin.utils.constants import TRUE
+
 
 
 # we are spoofing the oracle contract that can is just given the function selector to execute
@@ -94,8 +108,8 @@ end
 @event
 func start_bet_called(initiator:felt, bet_id:felt):
 end
-# the participant initiating the bet gets to decide the position (0 lower / 1 higher), price point, and staked amount
-# and staking token address
+# the participant initiating the bet gets to decide the position (0 lower / 1 higher), price point (in USD), and staked amount
+# and staking token address alongwith asset_type (currently ignored and assumed to be ETH)
 @external
 func start_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -213,6 +227,8 @@ func join_bet{
 
     let (task_manager) = task_manager_address.read()
 
+    # add new task to task manager - this will be executed at decision time to get the latest asset price
+    # for deciding winner of the bet
     let (status) = ITaskManager.add_task(contract_address = task_manager,
                                          bet_id = existing_bet_id,
                                          decision_time = existing_bet_info.decision_time,
@@ -271,10 +287,10 @@ func complete_bet{
    
     check_valid_bet_id(bet_id)
     let(caller) = get_caller_address()
-    let(current_oracle_address)=oracle_address.read()
+    let(current_task_manager_address)=task_manager_address.read()
     with_attr error_message("Unauthorized caller"):
 
-        assert caller = current_oracle_address
+        assert caller = current_task_manager_address
     end
 
     let existing_bet_info: BetInfo=bet_info.read(bet_id=bet_id)
@@ -343,7 +359,7 @@ end
 # this function takes an address and returns the list of bet ids that were created by this address as the initiator
 # here initiator means participant1 in terms of BetInfo members
 
-@external
+@view
 func initiator_to_bet_ids{
         syscall_ptr: felt*, 
         pedersen_ptr: HashBuiltin*,
@@ -408,6 +424,15 @@ func get_current_bet_id{
     }() -> (current_bet_id:felt):
     let (current_bet_id) = bet_id.read()
     return (current_bet_id)
+end
+
+@view
+func get_task_manager_address{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}() -> (address:felt):
+
+    let (current_task_manager_address) = task_manager_address.read()
+    return(current_task_manager_address)
 end
 
 

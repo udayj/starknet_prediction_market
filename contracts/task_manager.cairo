@@ -31,7 +31,7 @@ end
 func oracle_address()->(res:felt):
 end
 
-
+# function to add task to task store for execution at decision time
 @external
 func add_task{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -69,6 +69,8 @@ func set_oracle_address{
     return()
 end
 
+# this function recursively checks whether a task is ready for execution by comparing decision time to current blocktimestamp
+# it returns true on finding the first task ready for exectuion without checking exhaustively
 
 func check_for_readiness{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -95,7 +97,7 @@ func check_for_readiness{
     end
 end
 
-
+# defined as per reference https://docs.yagi.fi/developers/automation/how-to-create-a-task
 
 @view
 func probeTask{
@@ -110,6 +112,10 @@ func probeTask{
 
     return (taskReady)
 end
+
+# this function executes tasks recursively by rechecking every task for 2 conditions
+# decision time < current blocktimestamp
+# task has not already been executed i.e. status==0
 
 func execute_tasks{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
@@ -126,6 +132,7 @@ func execute_tasks{
     let (is_timestamp_status) = is_le(task.decision_time, current_block_timestamp)
     let (is_executed_status) = is_le(task.status,0)
 
+    # ready for execution && not already executed
     if is_timestamp_status*is_executed_status == 1:
 
         let (local oracle ) = oracle_address.read()
@@ -153,7 +160,7 @@ func execute_tasks{
     end
 end
 
-
+# defined as per reference https://docs.yagi.fi/developers/automation/how-to-create-a-task
 
 @external
 func executeTask{
@@ -169,6 +176,7 @@ func executeTask{
     return()
 end
 
+# the following are simple helper functions to get to know the state of the system
 
 @view
 func get_current_task_id{
@@ -187,4 +195,31 @@ func get_data_task{
     let task:Task = data_task_store.read(task_id)
 
     return (task)
+end
+
+@view
+func get_market_address{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}() -> (address:felt):
+
+    let (current_market_address)=market_address.read()
+    return(current_market_address)
+end
+
+@view
+func get_oracle_address{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}() -> (address: felt):
+
+    let (current_oracle_address)=oracle_address.read()
+    return(current_oracle_address)
+end
+
+@view
+func get_current_blocktimestamp{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}() -> (res:felt):
+    
+    let (current_timestamp) = get_block_timestamp()
+    return(current_timestamp)
 end

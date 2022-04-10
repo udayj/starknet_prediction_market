@@ -278,6 +278,7 @@
                 "type": "felt*"
             }
         ],
+        "stateMutability": "view",
         "type": "function"
     },
     {
@@ -326,6 +327,18 @@
         "outputs": [
             {
                 "name": "current_bet_id",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_task_manager_address",
+        "outputs": [
+            {
+                "name": "address",
                 "type": "felt"
             }
         ],

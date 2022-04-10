@@ -42,23 +42,41 @@ async def account_factory():
 @pytest.fixture(scope='module')
 async def application_factory(account_factory):
     starknet, accounts = account_factory
-    oracle = await starknet.deploy(source="contracts/oracles/oracle.cairo")
+    oracle = await starknet.deploy(source="contracts/oracles/oracle_v2.cairo")
     token = await starknet.deploy(source="contracts/tokens/ERC20.cairo",constructor_calldata=[1,1,18])
     market = await starknet.deploy(source="contracts/prediction_market.cairo",constructor_calldata=[oracle.contract_address])
+    task_manager = await starknet.deploy(source="contracts/task_manager.cairo")
 
-    return starknet, accounts, oracle, token, market
+    return starknet, accounts, oracle, token, market, task_manager
 
 @pytest.mark.asyncio
 async def test_flow(application_factory):
 
     
-    _, accounts, oracle, token, market = application_factory
+    _, accounts, oracle, token, market, task_manager = application_factory
     # Let two different users save a number.
     user_0 = accounts[0]
    
     user_1 = accounts[1]
   
-    
+    await user_0.tx_with_nonce(
+        to=market.contract_address,
+        selector_name='set_task_manager_address',
+        calldata=[task_manager.contract_address]
+    )
+
+    await user_0.tx_with_nonce(
+        to=task_manager.contract_address,
+        selector_name='set_oracle_address',
+        calldata=[oracle.contract_address]
+    )
+
+    await user_0.tx_with_nonce(
+        to=task_manager.contract_address,
+        selector_name='set_market_address',
+        calldata=[market.contract_address]
+    )
+
     await user_0.tx_with_nonce(
         to=token.contract_address,
         selector_name='mint',
@@ -90,12 +108,13 @@ async def test_flow(application_factory):
 
         to=market.contract_address,
         selector_name='start_bet',
-        calldata=[1,2000,0,1000,0,token.contract_address]
+        calldata=[1,2000,0,1000,0,token.contract_address,0,0]
     )
 
     execution_info = await market.get_bet_info(0).invoke()
 
     print(execution_info.result)
+
 
 
     await user_1.tx_with_nonce(
@@ -121,12 +140,34 @@ async def test_flow(application_factory):
 
     #print(execution_info.result)
 
+    execution_info = await task_manager.get_data_task(0).invoke()
+
+    print(execution_info.result)
+
+    execution_info = await task_manager.probeTask().invoke()
+
+    print(execution_info.result)
+
+
     await user_1.tx_with_nonce(
         to=oracle.contract_address,
-        selector_name='call_indexed_contract',
-        calldata=[0,3,0,2500,0]
+        selector_name='set_data',
+        calldata=[0,2500,0]
     )
 
+    await user_1.tx_with_nonce(
+        to=task_manager.contract_address,
+        selector_name='executeTask',
+        calldata=[]
+    )
+
+    execution_info = await task_manager.get_data_task(0).invoke()
+
+    print(execution_info.result)
+
+    execution_info = await task_manager.get_current_blocktimestamp().invoke()
+
+    print(execution_info.result)
 
     user_0_balance = await token.balanceOf(
         user_0.address).invoke()
@@ -147,7 +188,7 @@ async def test_flow(application_factory):
 
 
 
-    #print(execution_info.result)
+    print(execution_info.result)
 
     #execution_info = await oracle.get_task(0).invoke()
 
