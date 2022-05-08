@@ -88,7 +88,8 @@ func check_for_readiness{
 
     local syscall_ptr:felt* = syscall_ptr
     let (is_le_status) = is_le(task.decision_time, current_block_timestamp)
-    if is_le_status == 1:
+    let (is_executed_status) = is_le(task.status,0)
+    if is_le_status*is_executed_status == 1:
         return (1)
     else:
 
