@@ -43,56 +43,56 @@
             {
                 "name": "participant1",
                 "offset": 0,
-                "type": "felt"
+                "type": "Uint256"
             },
             {
                 "name": "participant2",
-                "offset": 1,
-                "type": "felt"
+                "offset": 2,
+                "type": "Uint256"
             },
             {
                 "name": "currency_address",
-                "offset": 2,
+                "offset": 4,
                 "type": "felt"
             },
             {
                 "name": "position_participant1",
-                "offset": 3,
+                "offset": 5,
                 "type": "felt"
             },
             {
                 "name": "predicted_price_point",
-                "offset": 4,
-                "type": "Uint256"
-            },
-            {
-                "name": "staked_amount",
                 "offset": 6,
                 "type": "Uint256"
             },
             {
-                "name": "status",
+                "name": "staked_amount",
                 "offset": 8,
-                "type": "felt"
+                "type": "Uint256"
             },
             {
-                "name": "winner",
-                "offset": 9,
-                "type": "felt"
-            },
-            {
-                "name": "asset_type",
+                "name": "status",
                 "offset": 10,
                 "type": "felt"
             },
             {
-                "name": "decision_time",
+                "name": "winner",
                 "offset": 11,
+                "type": "Uint256"
+            },
+            {
+                "name": "asset_type",
+                "offset": 13,
+                "type": "felt"
+            },
+            {
+                "name": "decision_time",
+                "offset": 14,
                 "type": "felt"
             }
         ],
         "name": "BetInfo",
-        "size": 12,
+        "size": 15,
         "type": "struct"
     },
     {
@@ -267,18 +267,8 @@
                 "type": "felt"
             }
         ],
-        "name": "initiator_to_bet_ids",
-        "outputs": [
-            {
-                "name": "bet_ids_len",
-                "type": "felt"
-            },
-            {
-                "name": "bet_ids",
-                "type": "felt*"
-            }
-        ],
-        "stateMutability": "view",
+        "name": "set_oracle_address",
+        "outputs": [],
         "type": "function"
     },
     {
@@ -288,7 +278,7 @@
                 "type": "felt"
             }
         ],
-        "name": "set_oracle_address",
+        "name": "set_ERC721_address",
         "outputs": [],
         "type": "function"
     },
@@ -335,7 +325,31 @@
     },
     {
         "inputs": [],
+        "name": "get_current_nft_id",
+        "outputs": [
+            {
+                "name": "current_nft_id",
+                "type": "Uint256"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
         "name": "get_task_manager_address",
+        "outputs": [
+            {
+                "name": "address",
+                "type": "felt"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "get_ERC721_address",
         "outputs": [
             {
                 "name": "address",

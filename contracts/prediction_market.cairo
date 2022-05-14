@@ -2,6 +2,7 @@
 
 
 from starkware.cairo.common.cairo_builtins import HashBuiltin
+from starkware.cairo.common.registers import get_fp_and_pc
 from starkware.starknet.common.syscalls import (
     get_caller_address, 
     get_contract_address, 
@@ -27,6 +28,7 @@ from contracts.interfaces.IOracle import IOracle
 from contracts.oracles.oracle import ContractData
 from contracts.data_types import BetInfo
 from contracts.interfaces.ITaskManager import ITaskManager
+from contracts.interfaces.IERC721 import IERC721
 
 
 
@@ -45,6 +47,10 @@ func bet_id() -> (res:felt):
 end
 
 @storage_var
+func nft_id() -> (res:Uint256):
+end
+
+@storage_var
 func oracle_address() -> (address:felt):
 end
 
@@ -55,6 +61,10 @@ end
 
 @storage_var
 func task_manager_address() -> (address: felt):
+end
+
+@storage_var
+func ERC721_address() -> (address:felt):
 end
 
 @external
@@ -122,7 +132,7 @@ func start_bet{
 
     alloc_locals
     let UINT256_ONE:Uint256=Uint256(low=1,high=0)
-
+    let UINT256_ZERO:Uint256=Uint256(low=0,high=0)
     with_attr error_message("Staked amount cannot be less than 1"):
         let (staked_amount_status:felt ) = uint256_lt(amount, UINT256_ONE)
         assert staked_amount_status = 0
@@ -155,23 +165,40 @@ func start_bet{
         assert status = TRUE
     end
    
-    let new_bet_info:BetInfo=BetInfo(participant1=participant1,
-                         participant2=0,
+    let (current_bet_id) = bet_id.read()
+    bet_id.write(current_bet_id+1)
+
+    let current_nft_id:Uint256 = nft_id.read()
+    let (nft_contract_address) = ERC721_address.read()
+    let (__fp__, _) = get_fp_and_pc()
+    local data_len
+    assert data_len = 0
+    let data:felt * = cast(&data_len,felt*)
+    IERC721.safeMint(nft_contract_address,participant1, current_nft_id, data_len, data, current_bet_id)
+
+    
+    let new_nft_id:Uint256 = uint256_add(current_nft_id,UINT256_ONE)
+
+    nft_id.write(new_nft_id)
+
+    let new_bet_info:BetInfo=BetInfo(participant1=current_nft_id,
+                         participant2=UINT256_ZERO,
                          currency_address=currency_address,
                          position_participant1=position,
                          predicted_price_point=price_point,
                          staked_amount=amount,
                          status=0, #0 means open, 1 means closed but undecided, 2 means decided and completed
-                         winner=0,
+                         winner=UINT256_ZERO,
                          asset_type=asset_type,
                          decision_time=decision_time)
 
-    let (current_bet_id) = bet_id.read()
-    bet_id.write(current_bet_id+1)
 
     bet_info.write(current_bet_id,new_bet_info)
     let (num_bets)= num_bets_initiated.read(participant1)
     num_bets_initiated.write(participant1,num_bets+1)
+
+    
+
     #emitting the event for front end to get to know the bet id
     start_bet_called.emit(initiator=participant1,bet_id=current_bet_id)
 
@@ -184,6 +211,10 @@ end
 func join_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
         range_check_ptr}(existing_bet_id:felt):
+
+    alloc_locals
+    let UINT256_ONE:Uint256=Uint256(low=1,high=0)
+    let UINT256_ZERO:Uint256=Uint256(low=0,high=0)
 
     let (participant2)=get_caller_address()
 
@@ -209,16 +240,29 @@ func join_bet{
         assert status = TRUE
     end
 
+    let current_nft_id:Uint256 = nft_id.read()
+    let (nft_contract_address) = ERC721_address.read()
+    let (__fp__, _) = get_fp_and_pc()
+    local data_len
+    assert data_len = 0
+    let data:felt * = cast(&data_len,felt*)
+
+    IERC721.safeMint(nft_contract_address, participant2, current_nft_id, data_len, data, existing_bet_id)
     
+    
+    let new_nft_id:Uint256 = uint256_add(current_nft_id,UINT256_ONE)
+
+    nft_id.write(new_nft_id)
+
 
     let updated_bet_info: BetInfo = BetInfo(participant1=existing_bet_info.participant1,
-                                    participant2=participant2,
+                                    participant2=current_nft_id,
                                     currency_address = existing_bet_info.currency_address,
                                     position_participant1=existing_bet_info.position_participant1,
                                     predicted_price_point=existing_bet_info.predicted_price_point,
                                     staked_amount=existing_bet_info.staked_amount,
                                     status=1,
-                                    winner=0,
+                                    winner=UINT256_ZERO,
                                     asset_type=existing_bet_info.asset_type,
                                     decision_time=existing_bet_info.decision_time)
     bet_info.write(existing_bet_id,updated_bet_info)
@@ -243,7 +287,7 @@ end
 
 func set_winner{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
-        range_check_ptr}(bet_id:felt, winner:felt):
+        range_check_ptr}(bet_id:felt, winner:Uint256):
 
     alloc_locals
 
@@ -265,8 +309,10 @@ func set_winner{
     let (winning_amount:Uint256, carry:felt ) = uint256_add(existing_bet_info.staked_amount,existing_bet_info.staked_amount)
     # we are just going to assume we are delaing with small enough numbers that carry does not matter
 
+    let (nft_contract_address) = ERC721_address.read()
+    let (nft_owner) = IERC721.ownerOf(nft_contract_address,winner)
     let (status:felt) = IERC20.transfer(contract_address=existing_bet_info.currency_address,
-                                        recipient=winner, 
+                                        recipient=nft_owner, 
                                         amount=winning_amount)
 
 
@@ -331,57 +377,6 @@ func complete_bet{
     return()
 end
 
-# this function recursively gets the bet_ids associated with address as the participant1
-
-func get_bet_ids{
-        syscall_ptr: felt*, 
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }(address:felt, num_bets:felt, bet_ids:felt*, bets_found:felt, index:felt):
-
-    if num_bets==bets_found:
-        return()
-    end
-
-    let bet:BetInfo = get_bet_info(index)
-
-    if bet.participant1 == address:
-        assert [bet_ids]=index
-        get_bet_ids(address,num_bets,bet_ids+1,bets_found+1,index+1)
-        return()
-    else:
-        get_bet_ids(address,num_bets,bet_ids,bets_found,index+1)
-        return()
-    end
-    
-end
-
-# this function takes an address and returns the list of bet ids that were created by this address as the initiator
-# here initiator means participant1 in terms of BetInfo members
-
-@view
-func initiator_to_bet_ids{
-        syscall_ptr: felt*, 
-        pedersen_ptr: HashBuiltin*,
-        range_check_ptr
-    }(address:felt) -> (bet_ids_len:felt, bet_ids:felt*):
-
-    alloc_locals
-    let (local num_bets) = num_bets_initiated.read(address)
-
-    let (bet_ids) = alloc()
-
-    # recursively fill the bet_ids array with the relevant bet ids
-    get_bet_ids(address=address,
-                num_bets=num_bets,
-                bet_ids=bet_ids,
-                bets_found=0,
-                index=0)
-
-    return(num_bets,bet_ids)
-end
-
-
 @external
 func set_oracle_address{
         syscall_ptr: felt*, 
@@ -397,6 +392,20 @@ func set_oracle_address{
     return()
 end
 
+@external
+func set_ERC721_address{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }(address:felt):
+
+    with_attr error_message("cannot be 0 address"):
+        assert_not_equal(address,0)
+    end
+
+    ERC721_address.write(address)
+    return()
+end
 
 
 @view
@@ -427,6 +436,17 @@ func get_current_bet_id{
 end
 
 @view
+func get_current_nft_id{
+        syscall_ptr: felt*, 
+        pedersen_ptr: HashBuiltin*,
+        range_check_ptr
+    }() -> (current_nft_id:Uint256):
+
+    let current_nft_id:Uint256 = nft_id.read()
+    return (current_nft_id)
+end
+
+@view
 func get_task_manager_address{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
         range_check_ptr}() -> (address:felt):
@@ -434,5 +454,16 @@ func get_task_manager_address{
     let (current_task_manager_address) = task_manager_address.read()
     return(current_task_manager_address)
 end
+
+@view
+func get_ERC721_address{
+        syscall_ptr : felt*, 
+        pedersen_ptr : HashBuiltin*,
+        range_check_ptr}() -> (address:felt):
+
+    let (address)=ERC721_address.read()
+    return (address)
+end
+    
 
 
