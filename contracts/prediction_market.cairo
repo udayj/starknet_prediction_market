@@ -31,7 +31,7 @@ from contracts.interfaces.ITaskManager import ITaskManager
 
 
 
-# we are spoofing the oracle contract that can is just given the function selector to execute
+# we are spoofing the oracle contract that is just given the function selector to execute
 # TODO NFT for the position in the bet
 # separate explicit position for participant 2 not being stored as it is assumed that it will be opposite to that of participant1
 
