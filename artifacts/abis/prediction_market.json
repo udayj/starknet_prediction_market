@@ -248,6 +248,17 @@
     {
         "inputs": [
             {
+                "name": "existing_bet_id",
+                "type": "felt"
+            }
+        ],
+        "name": "close_bet",
+        "outputs": [],
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
                 "name": "bet_id",
                 "type": "felt"
             },

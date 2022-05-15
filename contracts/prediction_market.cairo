@@ -323,7 +323,55 @@ func set_winner{
     return()
 end
 
-#this can only be called by an oracle contract to which we have passed this function's selector
+# this function can only be called by owner of participant1 nft 
+# this can only be called for bets that are in an open position with status=0
+@external
+func close_bet{
+        syscall_ptr : felt*, 
+        pedersen_ptr : HashBuiltin*,
+        range_check_ptr}(existing_bet_id:felt):
+    
+    check_valid_bet_id(existing_bet_id)
+    let(caller) = get_caller_address()
+    let existing_bet_info: BetInfo=bet_info.read(bet_id=existing_bet_id)
+
+    with_attr error_message("Cannot close bet which is not open"):
+        assert existing_bet_info.status = 0
+    end
+
+    let (nft_contract_address) = ERC721_address.read()
+    let (nft_owner) = IERC721.ownerOf(nft_contract_address,existing_bet_info.participant1)
+
+    with_attr error_message("Caller not authorized to close bet"):
+        assert caller = nft_owner
+    end
+
+    let (status:felt) = IERC20.transfer(contract_address=existing_bet_info.currency_address,
+                                        recipient=nft_owner, 
+                                        amount=existing_bet_info.staked_amount)
+
+
+    with_attr error_message("Problem returning staked amount"):
+        assert status = TRUE
+    end
+
+    let updated_bet_info: BetInfo = BetInfo(participant1=existing_bet_info.participant1,
+                                    participant2=existing_bet_info.participant2,
+                                    currency_address=existing_bet_info.currency_address,
+                                    position_participant1=existing_bet_info.position_participant1,
+                                    predicted_price_point=existing_bet_info.predicted_price_point,
+                                    staked_amount=existing_bet_info.staked_amount,
+                                    status=3, # status 3 signifies bet was closed without being joined/completed
+                                    winner=existing_bet_info.winner,
+                                    asset_type=existing_bet_info.asset_type,
+                                    decision_time=existing_bet_info.decision_time)
+
+    bet_info.write(existing_bet_id,updated_bet_info)
+    return()
+
+end
+
+# this can only be called by the task manager contract when it has the required data point to decide the bet
 @external
 func complete_bet{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
