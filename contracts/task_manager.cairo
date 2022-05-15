@@ -7,6 +7,8 @@ from contracts.interfaces.IOracle_v2 import IOracle_v2
 from starkware.cairo.common.uint256 import Uint256
 from contracts.interfaces.IPredictionMarket import IPredictionMarket
 
+
+
 struct Task:
 
     member bet_id:felt
@@ -29,6 +31,13 @@ end
 
 @storage_var
 func oracle_address()->(res:felt):
+end
+
+# paused status can be 0 (not paused) or 1 (paused)
+# paused means the probe function returns 0 without checking for task execution readiness
+
+@storage_var
+func is_paused() -> (res:felt):
 end
 
 # function to add task to task store for execution at decision time
@@ -107,6 +116,15 @@ func probeTask{
 
     alloc_locals
 
+    let (status) = is_paused.read()
+
+    let (is_eq_status) = is_le(status,0)
+
+    if is_eq_status == 0:
+
+        return(0)
+    end
+
     let (num_tasks) = task_id.read()
 
     let (local taskReady) = check_for_readiness(num_tasks)
@@ -177,6 +195,14 @@ func executeTask{
     return()
 end
 
+@external
+func set_task_manager_status{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}(status:felt):
+
+    is_paused.write(status)
+    return()
+end
 # the following are simple helper functions to get to know the state of the system
 
 @view
@@ -223,4 +249,13 @@ func get_current_blocktimestamp{
     
     let (current_timestamp) = get_block_timestamp()
     return(current_timestamp)
+end
+
+@view
+func get_task_manager_status{
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*,
+        range_check_ptr}() -> (res:felt):
+    
+    let (status) = is_paused.read()
+    return (status)
 end
