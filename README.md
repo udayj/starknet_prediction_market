@@ -21,9 +21,11 @@ Important functions in the prediction_market contract
   <li>ERC-20 token address which you want to stake (the requirement for this argument will be removed later) </li>
   <li>Asset Type (currently ignored but helps support prediction for different types of assets ETH, wBTC etc.</li>
   <li>Time Duration - used to calculated decision time (decision time = time_duration + current_blocktimestamp)</li>
+  <li> It also issues an NFT to the caller of this function. This NFT represents the position in the bet and is freely tradeable on any marketplace </li>
 </ul>
-<li>join_bet function needs the bet_id which is returned from start_bet (and also emitted in an event)</li>
+<li>join_bet function needs the bet_id which is returned from start_bet (and also emitted in an event) and issues another NFT to represent the opposite position in this bet</li>
 <li>complete_bet function is callable only by the task_manager (needs to suppy the bet id and result/current price point)</li>
 <li>The callback function (complete_bet) in the prediction_market is triggered through execution of the executeTask function in task_manager</li>
-  <li>The test ERC-20 token deployed can be used to stake tokens in the bet.</li>
+<li>The close_bet function can be called by the owner of participant1 NFT to close a bet which has not yet been joined by another participant.</li>
+<li>The test ERC-20 token deployed can be used to stake tokens in the bet.</li>
 
